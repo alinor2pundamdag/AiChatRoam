@@ -73,7 +73,13 @@ if __name__ == "__main__":
     if nets:
         print(f"[+] Found {len(nets)} visible access points in range:")
         for net in nets:
-            print(f"    - SSID: {net.get('SSID')} | BSSID: {net.get('BSSID')} | RSSI: {net.get('RSSI')} dBm")
+            if isinstance(net, dict):
+                ssid = net.get('ssid') or net.get('SSID') or 'Unknown'
+                bssid = net.get('bssid') or net.get('BSSID') or 'N/A'
+                rssi = net.get('rssi') or net.get('RSSI') or 'N/A'
+                print(f"    - SSID: {ssid} | BSSID: {bssid} | RSSI: {rssi} dBm")
+            else:
+                print(f"    - {net}")
     else:
         print("[*] Skipping API scan or no networks returned.")
         
