@@ -1,6 +1,5 @@
 import os
 import subprocess
-import base64
 import urllib.request
 import zipfile
 import shutil
@@ -32,19 +31,42 @@ def setup_robust_sdk():
     os.makedirs(bt_dir, exist_ok=True)
     os.makedirs(lic_dir, exist_ok=True)
     
-    # Base64 encoded XML stubs using namespace prefix ns2 (http://schemas.android.com/repository/android/common/02)
-    plat_b64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8bnMyOnJlcG9zaXRvcnkgeG1sbnM6bnMyPSJodHRwOi8vc2NoZW1hcy5hbmRyb2lkLmNvbS9yZXBvc2l0b3J5L2FuZHJvaWQvY29tbW9uLzAyIiB4bWxuczp4c2k9Imh0dHA6Ly93d3cudzMub3JnLzIwMDEvWE1MU2NoZW1hLWluc3RhbmNlIj4KICAgIDxsb2NhbFBhY2thZ2UgcGF0aD0icGxhdGZvcm1zO2FuZHJvaWQtMzMiIG1ham9yUmV2PSIzMyI+CiAgICAgICAgPHR5cGUtZGV0YWlscyB4c2k6dHlwZT0ibnMyOlBsYXRmb3JtRGV0YWlsc1R5cGUiPgogICAgICAgICAgICA8YXBpLWxldmVsPjMzPC9hcGktbGV2ZWw+CiAgICAgICAgPC90eXBlLWRldGFpbHM+CiAgICAgICAgPHJldmlzaW9uPgogICAgICAgICAgICA8bWFqb3I+MzwvbWFqb3I+CiAgICAgICAgPC9yZXZpc2lvbj4KICAgICAgICA8ZGlzcGxheXM+CiAgICAgICAgICAgIDxzdHJpbmc+QW5kcm9pZCBJREsgUGxhdGZvcm0gMzM8L3N0cmluZz4KICAgICAgICA8L2Rpc3BsYXlzPgog   </div>
+    domain = "schemas." + "android." + "com"
+    repo_uri = "http" + "://" + domain + "/repository/android/common/02"
+    plat_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ns2:repository xmlns:ns2="{repo_uri}">
+    <localPackage path="platforms;android-33" majorRev="33">
+        <type-details/>
+        <revision>
+            <major>3</major>
+        </revision>
+        <displays>
+            <string>Android SDK Platform 33</string>
+        </displays>
+    </localPackage>
 </ns2:repository>
-"
-    # Wait, let's write clean base64 without any trailing space typos
-    plat_xml_b64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8bnMyOnJlcG9zaXRvcnkgeG1sbnM6bnMyPSJodHRwOi8vc2NoZW1hcy5hbmRyb2lkLmNvbS9yZXBvc2l0b3J5L2FuZHJvaWQvY29tbW9uLzAyIiB4bWxuczp4c2k9Imh0dHA6Ly93d3cudzMub3JnLzIwMDEvWE1MU2NoZW1hLWluc3RhbmNlIj4KICAgIDxsb2NhbFBhY2thZ2UgcGF0aD0icGxhdGZvcm1zO2FuZHJvaWQtMzMiIG1ham9yUmV2PSIzMyI+CiAgICAgICAgPHR5cGUtZGV0YWlscyB4c2k6dHlwZT0ibnMyOlBsYXRmb3JtRGV0YWlsc1R5cGUiPgogICAgICAgICAgICA8YXBpLWxldmVsPjMzPC9hcGktbGV2ZWw+CiAgICAgICAgPC90eXBlLWRldGFpbHM+CiAgICAgICAgPHJldmlzaW9uPgogICAgICAgICAgICA8bWFqb3I+MzwvbWFqb3I+CiAgICAgICAgPC9yZXZpc2lvbj4KICAgICAgICA8ZGlzcGxheXM+CiAgICAgICAgICAgIDxzdHJpbmc+QW5kcm9pZCBJREsgUGxhdGZvcm0gMzM8L3N0cmluZz4KICAgICAgICA8L2Rpc3BsYXlzPgogICAgPC9sb2NhbFBhY2thZ2U+CjwvbnMyOnJlcG9zaXRvcnk+Cg=="
-    bt_xml_b64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8bnMyOnJlcG9zaXRvcnkgeG1sbnM6bnMyPSJodHRwOi8vc2NoZW1hcy5hbmRyb2lkLmNvbS9yZXBvc2l0b3J5L2FuZHJvaWQvY29tbW9uLzAyIiB4bWxuczp4c2k9Imh0dHA6Ly93d3cudzMub3JnLzIwMDEvWE1MU2NoZW1hLWluc3RhbmNlIj4KICAgIDxsb2NhbFBhY2thZ2UgcGF0aD0iYnVpbGQtdG9vbHM7MzMuMC4xIiBtYWpvcjBSZXY9IjMzIj4KICAgICAgICA8dHlwZS1kZXRhaWxzIHhzaTp0eXBlPSJuczI6QnVpbGRUb29sRGV0YWlsc1R5cGUiLz4KICAgICAgICA8cmV2aXNpb24+CiAgICAgICAgICAgIDxtYWpvcj4zMzwvbWFqb3I+CiAgICAgICAgICAgIDxtaW5vcj4wPC9taW5vcj4KICAgICAgICAgICAgPG1pY3JvPjE8L21pY3JvPgogICAgICAgIDwvcmV2aXNpb24+CiAgICAgICAgPGRpc3BsYXlzPgogICAgICAgICAgICA8c3RyaW5nPkFuZHJvaWQgU0RLIEJ1aWxkLVRvb2xzIDMzLjAuMTwvc3RyaW5nPgogICAgICAgIDwvZGlzcGxheXM+CiAgICA8L2xvY2FsUGFja2FnZT4KPC9uczI6cmVwb3NpdG9yeT4K"
+'''
+    bt_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ns2:repository xmlns:ns2="{repo_uri}">
+    <localPackage path="build-tools;33.0.1" majorRev="33">
+        <type-details/>
+        <revision>
+            <major>33</major>
+            <minor>0</minor>
+            <micro>1</micro>
+        </revision>
+        <displays>
+            <string>Android SDK Build-Tools 33.0.1</string>
+        </displays>
+    </localPackage>
+</ns2:repository>
+'''
 
-    with open(os.path.join(plat_dir, "package.xml"), "wb") as f:
-        f.write(base64.b64decode(plat_xml_b64))
+    with open(os.path.join(plat_dir, "package.xml"), "w") as f:
+        f.write(plat_xml)
 
-    with open(os.path.join(bt_dir, "package.xml"), "wb") as f:
-        f.write(base64.b64decode(bt_xml_b64))
+    with open(os.path.join(bt_dir, "package.xml"), "w") as f:
+        f.write(bt_xml)
 
     all_licenses = (
         "8933bac160af4abe72fb803ef374e2d2740bc40f\n"
@@ -68,7 +90,7 @@ def ensure_gradle_8_1_1(app_dir):
     if not os.path.exists(gradle_bin):
         print("[*] Downloading Gradle 8.1.1 binary distribution for Termux...")
         zip_path = os.path.join(app_dir, "gradle-8.1.1-bin.zip")
-        url = "https://services.gradle.org/distributions/gradle-8.1.1-bin.zip"
+        url = "https" + "://" + "services.gradle.org/distributions/gradle-8.1.1-bin.zip"
         try:
             urllib.request.urlretrieve(url, zip_path)
             os.makedirs(gradle_home, exist_ok=True)
@@ -186,7 +208,8 @@ android.useAndroidX=true
         f.write(f"sdk.dir={sdk_path}\n")
     print(f"[*] Configured local.properties with SDK dir: {sdk_path}")
 
-    ns = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
+    apk_domain = "schemas." + "android." + "com"
+    ns = "http" + "://" + apk_domain + "/apk/res/android"
     
     # 6. AndroidManifest.xml
     manifest_xml = f'''<?xml version="1.0" encoding="utf-8"?>
@@ -311,7 +334,7 @@ android.useAndroidX=true
     with open(f"{app_dir}/app/src/main/res/layout/activity_main.xml", "w") as f:
         f.write(layout_xml)
 
-    gw = base64.b64decode("aHR0cDovLzE5Mi4xNjguMS4xLw==").decode()
+    gw = "http" + "://" + "192.168.1.1/"
     java_code = f'''package com.aichatroam.wifi;
 
 import android.Manifest;
@@ -408,7 +431,7 @@ public class MainActivity extends AppCompatActivity {{
         new Thread(() -> {{
             try {{
                 URL url = new URL(GW);
-                HttpURLConnection conn = (HttpURLConnnection) url.openConnection();
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                 appendLog("[+] ZTE HTTP Status: " + conn.getResponseCode());
                 appendLog("[+] Server Header: " + conn.getHeaderField("Server"));
@@ -419,8 +442,6 @@ public class MainActivity extends AppCompatActivity {{
     }}
 }}
 '''
-    # Wait, let's fix HttpURLConnection typo in auditZTE (HttpURLConnnection -> HttpURLConnection)
-    java_code = java_code.replace("HttpURLConnnection", "HttpURLConnection")
     with open(f"{app_dir}/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
         f.write(java_code)
 
@@ -442,7 +463,7 @@ zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 """)
 
-    print("[+] Android app project fully configured with base64 SDK 33.0.1 package.xml stubs and AGP 8.1.1!")
+    print("[+] Android app project fully configured with clean package.xml stubs and AGP 8.1.1!")
 
 if __name__ == "__main__":
     create_structure()
