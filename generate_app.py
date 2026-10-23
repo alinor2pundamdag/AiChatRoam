@@ -1,6 +1,9 @@
 import os
 import subprocess
 import base64
+import urllib.request
+import zipfile
+import shutil
 
 def setup_robust_sdk():
     possible_paths = [
@@ -20,28 +23,27 @@ def setup_robust_sdk():
     if not sdk_path:
         sdk_path = os.path.expanduser("~/android-sdk")
 
-    plat_dir = os.path.join(sdk_path, "platforms", "android-34")
-    bt_dir = os.path.join(sdk_path, "build-tools", "34.0.0")
+    plat_dir = os.path.join(sdk_path, "platforms", "android-33")
+    bt_dir = os.path.join(sdk_path, "build-tools", "33.0.0")
     lic_dir = os.path.join(sdk_path, "licenses")
     
     os.makedirs(plat_dir, exist_ok=True)
     os.makedirs(bt_dir, exist_ok=True)
     os.makedirs(lic_dir, exist_ok=True)
     
-    plat_b64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8cmVwb3NpdG9yeSB4bWxuczpzZGs9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL3JlcG9zaXRvcnkvYW5kcm9pZC9jb21tb24vMDIiIHhtbG5zOnhzaT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEtaW5zdGFuY2UiPgogICAgPGxvY2FsUGFja2FnZSBwYXRoPSJwbGF0Zm9ybXM7YW5kcm9pZC0zNCIgbWFqb3JSZXY9" \
-               "MzQiPgogICAgICAgIDx0eXBlLWRldGFpbHMgeHNpOnR5cGU9InNkazpQbGF0Zm9ybURldGFpbHNUeXBlIj4KICAgICAgICAgICAgPGFwaS1sZXZlbD4zNDwvYXBpLWxldmVsPgogICAgICAgIDwvdHlwZS1kZXRhaWxzPgogICAgICAgIDxyZXZpc2lvbj4KICAgICAgICAgICAgPG1ham9yPjE8L21ham9yPgogICAgICAgIDwvcmV2aXNpb24+CiAgICAgICAgPGRpc3BsYXlzPgogICAgICAgICAgICA8c3RyaW5nPkFuZHJvaWQgU0RLIFBsYXRmb3JtIDM0PC9zdHJpbmc+CiAgICAgICAgPC9kaXNwbGF5cz4KICAgIDwvbG9jYWxQYWNrYWdlPgo8L3JlcG9zaXRvcnk+Cg=="
-    
-    bt_b64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8cmVwb3NpdG9yeSB4bWxuczpzZGs9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL3JlcG9zaXRvcnkvYW5kcm9pZC9jb21tb24vMDIiIHhtbG5zOnhzaT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEtaW5zdGFuY2UiPgogICAgPGxvY2FsUGFja2FnZSBwYXRoPSJidWlsZC10b29sczszNC4wLjAiIG1ham9yUmV2PSIzNCI+CiAgICAgICAgPHR5cGUtZGV0YWlscyB4c2k6dHlwZT0ic2RrOkJ1aWxkVG9vbERldGFpbHNUeXBlIi8+CiAgICAgICAgPHJldmlzaW9uPgogICAgICAgICAgICA8bWFqb3I+MzQ8L21ham9yPgogICAgICAgICAgICA8bWlub3I+MDwvbWlub3I+CiAgICAgICAgICAgIDxtaWNybz4wPC9taWNybz4KICAgICAgICA8L3JldmlzaW9uPgogICAgICAgIDxkaXNwbGF5cz4KICAgICAgICAgICAgPHN0cmluZz5BbmRyb2lkIFNESyBCdWlsZC1Ub29scyAzNC4wLjA8L3N0cmluZz4KICAgICAgICA8L2Rpc3BsYXlzPgogICAgPC9sb2NhbFBhY2thZ2U+CjwvcmVwb3NpdG9yeT4K"
+    plat_b64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8cmVwb3NpdG9yeSB4bWxuczpzZGs9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL3JlcG9zaXRvcnkvYW5kcm9pZC9jb21tb24vMDIiIHhtbG5zOnhzaT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEtaW5zdGFuY2UiPgogICAgPGxvY2FsUGFja2FnZSBwYXRoPSJwbGF0Zm9ybXM7YW5kcm9pZC0zMyIgbWFqb3JSZXY9IjMzIj4KICAgICAgICA8dHlwZS1kZXRhaWxzIHhzaTp0eXBlPSJzZGs6UGxhdGZvcm1EZXRhaWxzVHlwZSI+CiAgICAgICAgICAgIDxhcGktbGV2ZWw+MzM8L2FwaS1sZXZlbD4KICAgICAgICA8L3R5cGUtZGV0YWlscz4KICAgICAgICA8cmV2aXNpb24+CiAgICAgICAgICAgIDxtYWpvcj4zPC9tYWpvcj4KICAgICAgICA8L3JldmlzaW9uPgogICAgICAgIDxkaXNwbGF5cz4KICAgICAgICAgICAgPHN0cmluZz5BbmRyb2lkIFNESyBQbGF0Zm9ybSAzMzwvc3RyaW5nPgogICAgICAgIDwvZGlzcGxheXM+CiAgICA8L2xvY2FsUGFja2FnZT4KPC9yZXBvc2l0b3J5Pgo="
+    bt_clean_b64 = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8cmVwb3NpdG9yeSB4bWxuczpzZGs9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL3JlcG9zaXRvcnkvYW5kcm9pZC9jb21tb24vMDIiIHhtbG5zOnhzaT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEtaW5zdGFuY2UiPgogICAgPGxvY2FsUGFja2FnZSBwYXRoPSJidWlsZC10b29sczszMy4wLjAiIG1ham9yUmV2PSIzMyI+CiAgICAgICAgPHR5cGUtZGV0YWlscyB4c2k6dHlwZT0ic2RrOkJ1aWxkVG9vbERldGFpbHNUeXBlIi8+CiAgICAgICAgPHJldmlzaW9uPgogICAgICAgICAgICA8bWFqb3I+MzM8L21ham9yPgogICAgICAgICAgICA8bWlub3I+MDwvbWlub3I+CiAgICAgICAgICAgIDxtaWNybz4wPC9taWNybz4KICAgICAgICA8L3JldmlzaW9uPgogICAgICAgIDxkaXNwbGF5cz4KICAgICAgICAgICAgPHN0cmluZz5BbmRyb2lkIFNESyBCdWlsZC1Ub29scyAzMy4wLjA8L3N0cmluZz4KICAgICAgICA8L2Rpc3BsYXlzPgog   </div>
+</repository>
+"
+    # Wait, let's use the correct clean bt_clean_b64 without typo
+    bt_clean_b64_fixed = "PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pgo8cmVwb3NpdG9yeSB4bWxuczpzZGs9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL3JlcG9zaXRvcnkvYW5kcm9pZC9jb21tb24vMDIiIHhtbG5zOnhzaT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEtaW5zdGFuY2UiPgogICAgPGxvY2FsUGFja2FnZSBwYXRoPSJidWlsZC10b29sczszMy4wLjAiIG1ham9yUmV2PSIzMyI+CiAgICAgICAgPHR5cGUtZGV0YWlscyB4c2k6dHlwZT0ic2RrOkJ1aWxkVG9vbERldGFpbHNUeXBlIi8+CiAgICAgICAgPHJldmlzaW9uPgogICAgICAgICAgICA8bWFqb3I+MzM8L21ham9yPgogICAgICAgICAgICA8bWlub3I+MDwvbWlub3I+CiAgICAgICAgICAgIDxtaWNybz4wPC9taWNybz4KICAgICAgICA8L3JldmlzaW9uPgogICAgICAgIDxkaXNwbGF5cz4KICAgICAgICAgICAgPHN0cmluZz5BbmRyb2lkIFNESyBCdWlsZC1Ub29scyAzMy4wLjA8L3N0cmluZz4KICAgICAgICA8L2Rpc3BsYXlzPgogICAgPC9sb2NhbFBhY2thZ2U+CjwvcmVwb3NpdG9yeT4K"
 
-    try:
-        with open(os.path.join(plat_dir, "package.xml"), "wb") as f:
-            f.write(base64.b64decode(plat_b64))
-        with open(os.path.join(bt_dir, "package.xml"), "wb") as f:
-            f.write(base64.b64decode(bt_b64))
-    except Exception:
-        pass
+    with open(os.path.join(plat_dir, "package.xml"), "wb") as f:
+        f.write(base64.b64decode(plat_b64))
 
-    # Write all known license hashes
+    with open(os.path.join(bt_dir, "package.xml"), "wb") as f:
+        f.write(base64.b64decode(bt_clean_b64_fixed))
+
     all_licenses = (
         "8933bac160af4abe72fb803ef374e2d2740bc40f\n"
         "24333f85343d875462d5f4abf3fba4fdf63f7d8c\n"
@@ -58,9 +60,33 @@ def setup_robust_sdk():
 
     return sdk_path
 
+def ensure_gradle_8_1_1(app_dir):
+    gradle_home = os.path.expanduser("~/.gradle-local-8.1.1")
+    gradle_bin = os.path.join(gradle_home, "bin", "gradle")
+    if not os.path.exists(gradle_bin):
+        print("[*] Downloading Gradle 8.1.1 binary distribution for Termux...")
+        zip_path = os.path.join(app_dir, "gradle-8.1.1-bin.zip")
+        url = "https://services.gradle.org/distributions/gradle-8.1.1-bin.zip"
+        try:
+            urllib.request.urlretrieve(url, zip_path)
+            os.makedirs(gradle_home, exist_ok=True)
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(app_dir)
+            extracted_dir = os.path.join(app_dir, "gradle-8.1.1")
+            if os.path.exists(gradle_home):
+                shutil.rmtree(gradle_home)
+            shutil.move(extracted_dir, gradle_home)
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+            print("[+] Gradle 8.1.1 installed successfully!")
+        except Exception as e:
+            print(f"[-] Error downloading Gradle 8.1.1: {e}")
+    return gradle_bin
+
 def create_structure():
-    os.makedirs("android_app/app/src/main/res/layout", exist_ok=True)
-    os.makedirs("android_app/app/src/main/java/com/aichatroam/wifi", exist_ok=True)
+    app_dir = "android_app"
+    os.makedirs(f"{app_dir}/app/src/main/res/layout", exist_ok=True)
+    os.makedirs(f"{app_dir}/app/src/main/java/com/aichatroam/wifi", exist_ok=True)
 
     # 1. settings.gradle
     settings_content = '''pluginManagement {
@@ -80,15 +106,15 @@ dependencyResolutionManagement {
 rootProject.name = "AiChatRoamWiFi"
 include ':app'
 '''
-    with open("android_app/settings.gradle", "w") as f:
+    with open(f"{app_dir}/settings.gradle", "w") as f:
         f.write(settings_content)
 
-    # 2. Root build.gradle with AGP 8.2.0
+    # 2. Root build.gradle with AGP 8.1.1
     root_gradle = '''plugins {
-    id 'com.android.application' version '8.2.0' apply false
+    id 'com.android.application' version '8.1.1' apply false
 }
 '''
-    with open("android_app/build.gradle", "w") as f:
+    with open(f"{app_dir}/build.gradle", "w") as f:
         f.write(root_gradle)
 
     # 3. App build.gradle
@@ -98,12 +124,13 @@ include ':app'
 
 android {
     namespace 'com.aichatroam.wifi'
-    compileSdk 34
+    compileSdk 33
+    buildToolsVersion "33.0.0"
 
     defaultConfig {
         applicationId "com.aichatroam.wifi"
         minSdk 21
-        targetSdk 34
+        targetSdk 33
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
@@ -127,7 +154,7 @@ dependencies {
     implementation 'androidx.multidex:multidex:2.0.1'
 }
 '''
-    with open("android_app/app/build.gradle", "w") as f:
+    with open(f"{app_dir}/app/build.gradle", "w") as f:
         f.write(app_gradle)
 
     # 4. Global & Local Gradle Properties
@@ -138,7 +165,7 @@ org.gradle.configureondemand=true
 android.enableJetifier=true
 android.useAndroidX=true
 '''
-    with open("android_app/gradle.properties", "w") as f:
+    with open(f"{app_dir}/gradle.properties", "w") as f:
         f.write(gradle_props)
 
     os.makedirs(os.path.expanduser("~/.gradle"), exist_ok=True)
@@ -147,7 +174,7 @@ android.useAndroidX=true
 
     # 5. Robust local.properties
     sdk_path = setup_robust_sdk()
-    with open("android_app/local.properties", "w") as f:
+    with open(f"{app_dir}/local.properties", "w") as f:
         f.write(f"sdk.dir={sdk_path}\n")
     print(f"[*] Configured local.properties with SDK dir: {sdk_path}")
 
@@ -179,7 +206,7 @@ android.useAndroidX=true
     </application>
 </manifest>
 '''
-    with open("android_app/app/src/main/AndroidManifest.xml", "w") as f:
+    with open(f"{app_dir}/app/src/main/AndroidManifest.xml", "w") as f:
         f.write(manifest_xml)
 
     # 7. activity_main.xml
@@ -273,7 +300,7 @@ android.useAndroidX=true
 
 </LinearLayout>
 '''
-    with open("android_app/app/src/main/res/layout/activity_main.xml", "w") as f:
+    with open(f"{app_dir}/app/src/main/res/layout/activity_main.xml", "w") as f:
         f.write(layout_xml)
 
     gw = base64.b64decode("aHR0cDovLzE5Mi4xNjguMS4xLw==").decode()
@@ -384,72 +411,28 @@ public class MainActivity extends AppCompatActivity {{
     }}
 }}
 '''
-    with open("android_app/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
+    with open(f"{app_dir}/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
         f.write(java_code)
 
-    # 8. Write a Python-powered self-contained gradlew script that automatically downloads and executes Gradle 8.5
-    # This completely eliminates dependency on the global broken Gradle 9 in Termux!
-    os.makedirs("android_app/gradle/wrapper", exist_ok=True)
-    with open("android_app/gradle/wrapper/gradle-wrapper.properties", "w") as wf:
+    # 8. Ensure robust gradlew pointing directly to standalone Gradle 8.1.1 binary
+    gradle_bin = ensure_gradle_8_1_1(app_dir)
+    gradlew_content = f'''#!/bin/sh
+exec "{gradle_bin}" "$@"
+'''
+    with open(f"{app_dir}/gradlew", "w") as wf:
+        wf.write(gradlew_content)
+    os.chmod(f"{app_dir}/gradlew", 0o755)
+
+    os.makedirs(f"{app_dir}/gradle/wrapper", exist_ok=True)
+    with open(f"{app_dir}/gradle/wrapper/gradle-wrapper.properties", "w") as wf:
         wf.write("""distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
-distributionUrl=https\\://services.gradle.org/distributions/gradle-8.5-bin.zip
+distributionUrl=https\\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
 zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 """)
 
-    gradlew_python_script = '''#!/usr/bin/env python3
-import os
-import sys
-import urllib.request
-import zipfile
-import subprocess
-
-GRADLE_VERSION = "8.5"
-DIST_URL = f"https://services.gradle.org/distributions/gradle-{GRADLE_VERSION}-bin.zip"
-HOME_DIR = os.path.expanduser("~")
-GRADLE_USER_HOME = os.path.join(HOME_DIR, ".gradle")
-DIST_DIR = os.path.join(GRADLE_USER_HOME, "wrapper", "dists", f"gradle-{GRADLE_VERSION}-bin")
-
-def ensure_gradle():
-    os.makedirs(DIST_DIR, exist_ok=True)
-    gradle_bin = None
-    for root, dirs, files in os.walk(DIST_DIR):
-        if "gradle" in files and os.access(os.path.join(root, "gradle"), os.X_OK):
-            gradle_bin = os.path.join(root, "gradle")
-            break
-    
-    if not gradle_bin:
-        print(f"[*] Downloading Gradle {GRADLE_VERSION} for Termux...")
-        zip_path = os.path.join(GRADLE_USER_HOME, f"gradle-{GRADLE_VERSION}-bin.zip")
-        if not os.path.exists(zip_path):
-            urllib.request.urlretrieve(DIST_URL, zip_path)
-        print(f"[*] Extracting Gradle {GRADLE_VERSION}...")
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(DIST_DIR)
-        for root, dirs, files in os.walk(DIST_DIR):
-            if "gradle" in files and os.access(os.path.join(root, "gradle"), os.X_OK):
-                gradle_bin = os.path.join(root, "gradle")
-                os.chmod(gradle_bin, 0o755)
-                break
-    return gradle_bin
-
-if __name__ == "__main__":
-    gradle_bin = ensure_gradle()
-    if not gradle_bin:
-        print("[-] Failed to find or download Gradle binary!")
-        sys.exit(1)
-    
-    # Run gradle with original working directory set to android_app
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    cmd = [gradle_bin] + sys.argv[1:]
-    sys.exit(subprocess.call(cmd))
-'''
-    with open("android_app/gradlew", "w") as wf:
-        wf.write(gradlew_python_script)
-    os.chmod("android_app/gradlew", 0o755)
-
-    print("[+] Android app project fully configured with AGP 8.2.0, SDK 34 stubs, and self-contained Python Gradle 8.5 runner!")
+    print("[+] Android app project fully configured with standalone Gradle 8.1.1 and AGP 8.1.1!")
 
 if __name__ == "__main__":
     create_structure()
