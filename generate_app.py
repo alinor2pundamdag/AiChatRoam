@@ -1,34 +1,44 @@
 import os
+import subprocess
 import base64
 
 def create_structure():
     os.makedirs("android_app/app/src/main/res/layout", exist_ok=True)
     os.makedirs("android_app/app/src/main/java/com/aichatroam/wifi", exist_ok=True)
 
+    # 1. settings.gradle with pluginManagement
+    settings_content = '''pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "AiChatRoamWiFi"
+include ':app'
+'''
     with open("android_app/settings.gradle", "w") as f:
-        f.write('rootProject.name = "AiChatRoamWiFi"\ninclude \':app\'\n')
+        f.write(settings_content)
 
+    # 2. Root build.gradle with AGP 8.2.0 (Compatible with Gradle 8.5)
+    root_gradle = '''plugins {
+    id 'com.android.application' version '8.2.0' apply false
+}
+'''
     with open("android_app/build.gradle", "w") as f:
-        f.write('''buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'
-    }
-}
+        f.write(root_gradle)
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
+    # 3. App build.gradle with explicit namespace
+    app_gradle = '''plugins {
+    id 'com.android.application'
 }
-''')
-
-    with open("android_app/app/build.gradle", "w") as f:
-        f.write('''apply plugin: 'com.android.application'
 
 android {
     namespace 'com.aichatroam.wifi'
@@ -53,16 +63,20 @@ dependencies {
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }
-''')
+'''
+    with open("android_app/app/build.gradle", "w") as f:
+        f.write(app_gradle)
 
+    # 4. local.properties SDK path
     android_sdk_path = os.path.expanduser("~/android-sdk")
     if not os.path.exists(android_sdk_path):
         android_sdk_path = os.path.expanduser("~/termux-sdk")
-    
     with open("android_app/local.properties", "w") as f:
         f.write(f"sdk.dir={android_sdk_path}\n")
 
     ns = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
+    
+    # 5. AndroidManifest.xml
     manifest_xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="{ns}">
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -90,6 +104,7 @@ dependencies {
     with open("android_app/app/src/main/AndroidManifest.xml", "w") as f:
         f.write(manifest_xml)
 
+    # 6. activity_main.xml
     layout_xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="{ns}"
     android:layout_width="match_parent"
@@ -294,7 +309,23 @@ public class MainActivity extends AppCompatActivity {{
     with open("android_app/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
         f.write(java_code)
 
-    print("[+] Android app project structure fully generated with local.properties configuration!")
+    # 7. Automatically generate Gradle wrapper for Gradle 8.5 to bypass global Gradle 9.x incompatibilities
+    print("[*] Generating Gradle 8.5 Wrapper to guarantee 100% compatibility...")
+    try:
+        subprocess.run(["gradle", "wrapper", "--gradle-version", "8.5"], cwd="android_app", check=True)
+        print("[+] Gradle wrapper generated successfully!")
+    except Exception as e:
+        print(f"[-] Warning: Failed to generate wrapper automatically ({e}). Creating fallback properties...")
+        os.makedirs("android_app/gradle/wrapper", exist_ok=True)
+        with open("android_app/gradle/wrapper/gradle-wrapper.properties", "w") as wf:
+            wf.write("""distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\\://services.gradle.org/distributions/gradle-8.5-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+""")
+
+    print("[+] Android app project structure fully generated with AGP 8.2.0 and Gradle 8.5 Wrapper!")
 
 if __name__ == "__main__":
     create_structure()
