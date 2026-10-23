@@ -2,6 +2,28 @@ import os
 import subprocess
 import base64
 
+def find_android_sdk():
+    # Common paths for Android SDK in Termux / Android environments
+    possible_paths = [
+        os.path.expanduser("~/android-sdk"),
+        os.path.expanduser("~/termux-sdk"),
+        os.path.expanduser("~/.android-sdk"),
+        "/data/data/com.termux/files/home/android-sdk",
+        "/data/data/com.termux/files/home/termux-sdk",
+        "/storage/emulated/0/Android/sdk"
+    ]
+    for path in possible_paths:
+        if os.path.exists(path) and (os.path.exists(os.path.join(path, "platforms")) or os.path.exists(os.path.join(path, "build-tools"))):
+            return path
+    
+    # Check if sdkmanager or emulator exists in PATH or check common environment variables
+    env_sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+    if env_sdk and os.path.exists(env_sdk):
+        return env_sdk
+
+    # Default fallback to ~/android-sdk
+    return os.path.expanduser("~/android-sdk")
+
 def create_structure():
     os.makedirs("android_app/app/src/main/res/layout", exist_ok=True)
     os.makedirs("android_app/app/src/main/java/com/aichatroam/wifi", exist_ok=True)
@@ -27,7 +49,7 @@ include ':app'
     with open("android_app/settings.gradle", "w") as f:
         f.write(settings_content)
 
-    # 2. Root build.gradle with AGP 8.2.0 (Compatible with Gradle 8.5)
+    # 2. Root build.gradle with AGP 8.2.0
     root_gradle = '''plugins {
     id 'com.android.application' version '8.2.0' apply false
 }
@@ -67,12 +89,12 @@ dependencies {
     with open("android_app/app/build.gradle", "w") as f:
         f.write(app_gradle)
 
-    # 4. local.properties SDK path
-    android_sdk_path = os.path.expanduser("~/android-sdk")
-    if not os.path.exists(android_sdk_path):
-        android_sdk_path = os.path.expanduser("~/termux-sdk")
+    # 4. Robust local.properties with verified Android SDK path
+    sdk_path = find_android_sdk()
+    os.makedirs(sdk_path, exist_ok=True)
     with open("android_app/local.properties", "w") as f:
-        f.write(f"sdk.dir={android_sdk_path}\n")
+        f.write(f"sdk.dir={sdk_path}\n")
+    print(f"[*] Configured local.properties with SDK dir: {sdk_path}")
 
     ns = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
     
@@ -309,13 +331,13 @@ public class MainActivity extends AppCompatActivity {{
     with open("android_app/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
         f.write(java_code)
 
-    # 7. Automatically generate Gradle wrapper for Gradle 8.5 to bypass global Gradle 9.x incompatibilities
-    print("[*] Generating Gradle 8.5 Wrapper to guarantee 100% compatibility...")
+    # 7. Generate Gradle 8.5 Wrapper
+    print("[*] Generating Gradle 8.5 Wrapper...")
     try:
         subprocess.run(["gradle", "wrapper", "--gradle-version", "8.5"], cwd="android_app", check=True)
         print("[+] Gradle wrapper generated successfully!")
     except Exception as e:
-        print(f"[-] Warning: Failed to generate wrapper automatically ({e}). Creating fallback properties...")
+        print(f"[-] Warning: Failed to generate wrapper ({e}). Creating fallback properties...")
         os.makedirs("android_app/gradle/wrapper", exist_ok=True)
         with open("android_app/gradle/wrapper/gradle-wrapper.properties", "w") as wf:
             wf.write("""distributionBase=GRADLE_USER_HOME
@@ -325,7 +347,7 @@ zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 """)
 
-    print("[+] Android app project structure fully generated with AGP 8.2.0 and Gradle 8.5 Wrapper!")
+    print("[+] Android app project structure fully generated with dynamic SDK path detection!")
 
 if __name__ == "__main__":
     create_structure()
