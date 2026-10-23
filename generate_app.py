@@ -70,7 +70,7 @@ include ':app'
     with open("android_app/settings.gradle", "w") as f:
         f.write(settings_content)
 
-    # 2. Root build.gradle with classic AGP 7.4.2 (Zero version mismatch, robust buildscript classpath)
+    # 2. Root build.gradle without conflicting allprojects repositories block
     root_gradle = '''buildscript {
     repositories {
         google()
@@ -78,13 +78,6 @@ include ':app'
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:7.4.2'
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
     }
 }
 '''
