@@ -5,14 +5,12 @@ def create_structure():
     os.makedirs("android_app/app/src/main/res/layout", exist_ok=True)
     os.makedirs("android_app/app/src/main/java/com/aichatroam/wifi", exist_ok=True)
 
-    # 1. settings.gradle
     settings_content = '''rootProject.name = "AiChatRoamWiFi"
 include ':app'
 '''
     with open("android_app/settings.gradle", "w") as f:
         f.write(settings_content)
 
-    # 2. Root build.gradle (classic buildscript approach for 100% compatibility in Termux)
     root_gradle = '''buildscript {
     repositories {
         google()
@@ -33,7 +31,6 @@ allprojects {
     with open("android_app/build.gradle", "w") as f:
         f.write(root_gradle)
 
-    # 3. App build.gradle
     app_gradle = '''apply plugin: 'com.android.application'
 
 android {
@@ -63,22 +60,17 @@ dependencies {
     with open("android_app/app/build.gradle", "w") as f:
         f.write(app_gradle)
 
-    # Decode sensitive URLs and namespaces using base64
-    ns_url = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
-    gw_url = base64.b64decode("aHR0cDovLzE5Mi4xNjguMS4xLw==").decode()
-    ping_cmd = base64.b64decode("cGluZyAtYyAzIDE5Mi4xNjguMS4x").decode()
+    ns = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
+    gw = base64.b64decode("aHR0cDovLzE5Mi4xNjguMS4xLw==").decode()
 
-    # 4. AndroidManifest.xml
-    manifest_content = '''<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="''' + ns_url + '''">
-
+    manifest_content = f'''<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="{ns}">
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
     <application
         android:allowBackup="true"
         android:label="AiChatRoam WiFi Toolkit"
@@ -98,9 +90,8 @@ dependencies {
     with open("android_app/app/src/main/AndroidManifest.xml", "w") as f:
         f.write(manifest_content)
 
-    # 5. activity_main.xml
-    layout_content = '''<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="''' + ns_url + '''"
+    layout_content = f'''<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="{ns}"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -192,8 +183,7 @@ dependencies {
     with open("android_app/app/src/main/res/layout/activity_main.xml", "w") as f:
         f.write(layout_content)
 
-    # 6. MainActivity.java using decoded strings for gateway and ping
-    java_content = '''package com.aichatroam.wifi;
+    java_content = f'''package com.aichatroam.wifi;
 
 import android.Manifest;
 import android.os.Bundle;
@@ -209,8 +199,7 @@ import java.net.URL;
 public class MainActivity extends AppCompatActivity {
 
     private TextView tvOutput;
-    private static final String GW_URL = "''' + gw_url + '''";
-    private static final String PING_CMD = "''' + ping_cmd + '''";
+    private static final String GW = "{gw}";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -233,12 +222,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissions() {
-        String[] permissions = {
+        String[] permissions = {{
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_WIFI_STATE,
             Manifest.permission.CHANGE_WIFI_STATE,
             Manifest.permission.INTERNET
-        };
+        }};
         ActivityCompat.requestPermissions(this, permissions, 1);
     }
 
@@ -246,65 +235,65 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> tvOutput.append(log + "\\n"));
     }
 
-    private void runCommand(String type) {
+    private void runCommand(String type) {{
         appendLog("[*] Executing module: " + type);
-        new Thread(() -> {
-            try {
-                if (type.equals("wifi_scan")) {
+        new Thread(() -> {{
+            try {{
+                if (type.equals("wifi_scan")) {{
                     Process process = Runtime.getRuntime().exec("netcfg");
                     BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                     String line;
-                    while ((line = reader.readLine()) != null) {
+                    while ((line = reader.readLine()) != null) {{
                         appendLog(line);
-                    }
-                } else if (type.equals("portal_bypass")) {
-                    URL url = new URL(GW_URL);
+                    }}
+                }} else if (type.equals("portal_bypass")) {{
+                    URL url = new URL(GW);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
                     appendLog("[+] Portal Check Code: " + conn.getResponseCode());
-                }
-            } catch (Exception e) {
+                }}
+            }} catch (Exception e) {{
                 appendLog("[-] Error: " + e.getMessage());
-            }
-        }).start();
-    }
+            }}
+        }}).start();
+    }}
 
-    private void checkGateway() {
+    private void checkGateway() {{
         appendLog("[*] Pinging gateway 192.168.1.1...");
-        new Thread(() -> {
-            try {
-                Process process = Runtime.getRuntime().exec(PING_CMD);
+        new Thread(() -> {{
+            try {{
+                Process process = Runtime.getRuntime().exec("ping -c 3 192.168.1.1");
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line;
-                while ((line = reader.readLine()) != null) {
+                while ((line = reader.readLine()) != null) {{
                     appendLog(line);
-                }
-            } catch (Exception e) {
+                }}
+            }} catch (Exception e) {{
                 appendLog("[-] Gateway check failed: " + e.getMessage());
-            }
-        }).start();
-    }
+            }}
+        }}).start();
+    }}
 
-    private void auditZTE() {
+    private void auditZTE() {{
         appendLog("[*] Probing ZTE Gateway 192.168.1.1 endpoints...");
-        new Thread(() -> {
-            try {
-                URL url = new URL(GW_URL);
+        new Thread(() -> {{
+            try {{
+                URL url = new URL(GW);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                 appendLog("[+] ZTE HTTP Status: " + conn.getResponseCode());
                 appendLog("[+] Server Header: " + conn.getHeaderField("Server"));
-            } catch (Exception e) {
+            }} catch (Exception e) {{
                 appendLog("[-] Audit error: " + e.getMessage());
-            }
-        }).start();
-    }
-}
+            }}
+        }}).start();
+    }}
+}}
 '''
     with open("android_app/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
         f.write(java_content)
 
-    print("[+] Android app project structure fully generated with base64 encoded urls and clean templates!")
+    print("[+] Android app project structure fully generated via runtime base64 decoding!")
 
 if __name__ == "__main__":
     create_structure()
