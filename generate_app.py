@@ -55,6 +55,13 @@ dependencies {
 }
 ''')
 
+    android_sdk_path = os.path.expanduser("~/android-sdk")
+    if not os.path.exists(android_sdk_path):
+        android_sdk_path = os.path.expanduser("~/termux-sdk")
+    
+    with open("android_app/local.properties", "w") as f:
+        f.write(f"sdk.dir={android_sdk_path}\n")
+
     ns = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
     manifest_xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="{ns}">
@@ -287,7 +294,7 @@ public class MainActivity extends AppCompatActivity {{
     with open("android_app/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
         f.write(java_code)
 
-    print("[+] Android app project structure fully generated successfully!")
+    print("[+] Android app project structure fully generated with local.properties configuration!")
 
 if __name__ == "__main__":
     create_structure()
