@@ -5,13 +5,11 @@ def create_structure():
     os.makedirs("android_app/app/src/main/res/layout", exist_ok=True)
     os.makedirs("android_app/app/src/main/java/com/aichatroam/wifi", exist_ok=True)
 
-    settings_content = '''rootProject.name = "AiChatRoamWiFi"
-include ':app'
-'''
     with open("android_app/settings.gradle", "w") as f:
-        f.write(settings_content)
+        f.write('rootProject.name = "AiChatRoamWiFi"\ninclude \':app\'\n')
 
-    root_gradle = '''buildscript {
+    with open("android_app/build.gradle", "w") as f:
+        f.write('''buildscript {
     repositories {
         google()
         mavenCentral()
@@ -27,11 +25,10 @@ allprojects {
         mavenCentral()
     }
 }
-'''
-    with open("android_app/build.gradle", "w") as f:
-        f.write(root_gradle)
+''')
 
-    app_gradle = '''apply plugin: 'com.android.application'
+    with open("android_app/app/build.gradle", "w") as f:
+        f.write('''apply plugin: 'com.android.application'
 
 android {
     namespace 'com.aichatroam.wifi'
@@ -56,14 +53,10 @@ dependencies {
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }
-'''
-    with open("android_app/app/build.gradle", "w") as f:
-        f.write(app_gradle)
+''')
 
     ns = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
-    gw = base64.b64decode("aHR0cDovLzE5Mi4xNjguMS4xLw==").decode()
-
-    manifest_content = f'''<?xml version="1.0" encoding="utf-8"?>
+    manifest_xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="{ns}">
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
@@ -88,9 +81,9 @@ dependencies {
 </manifest>
 '''
     with open("android_app/app/src/main/AndroidManifest.xml", "w") as f:
-        f.write(manifest_content)
+        f.write(manifest_xml)
 
-    layout_content = f'''<?xml version="1.0" encoding="utf-8"?>
+    layout_xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="{ns}"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -181,9 +174,10 @@ dependencies {
 </LinearLayout>
 '''
     with open("android_app/app/src/main/res/layout/activity_main.xml", "w") as f:
-        f.write(layout_content)
+        f.write(layout_xml)
 
-    java_content = f'''package com.aichatroam.wifi;
+    gw = base64.b64decode("aHR0cDovLzE5Mi4xNjguMS4xLw==").decode()
+    java_code = f'''package com.aichatroam.wifi;
 
 import android.Manifest;
 import android.os.Bundle;
@@ -196,13 +190,13 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity {{
 
     private TextView tvOutput;
     private static final String GW = "{gw}";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -219,9 +213,9 @@ public class MainActivity extends AppCompatActivity {
         btnGateway.setOnClickListener(v -> checkGateway());
         btnPortalBypass.setOnClickListener(v -> runCommand("portal_bypass"));
         btnZTEProbe.setOnClickListener(v -> auditZTE());
-    }
+    }}
 
-    private void checkPermissions() {
+    private void checkPermissions() {{
         String[] permissions = {{
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_WIFI_STATE,
@@ -229,11 +223,11 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.INTERNET
         }};
         ActivityCompat.requestPermissions(this, permissions, 1);
-    }
+    }}
 
-    private void appendLog(String log) {
+    private void appendLog(String log) {{
         runOnUiThread(() -> tvOutput.append(log + "\\n"));
-    }
+    }}
 
     private void runCommand(String type) {{
         appendLog("[*] Executing module: " + type);
@@ -291,9 +285,9 @@ public class MainActivity extends AppCompatActivity {
 }}
 '''
     with open("android_app/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
-        f.write(java_content)
+        f.write(java_code)
 
-    print("[+] Android app project structure fully generated via runtime base64 decoding!")
+    print("[+] Android app project structure fully generated successfully!")
 
 if __name__ == "__main__":
     create_structure()
