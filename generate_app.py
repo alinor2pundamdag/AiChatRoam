@@ -20,68 +20,29 @@ def setup_robust_sdk():
     if not sdk_path:
         sdk_path = os.path.expanduser("~/android-sdk")
 
-    plat_dir = os.path.join(sdk_path, "platforms", "android-34")
-    bt_dir = os.path.join(sdk_path, "build-tools", "34.0.0")
+    # Create directories for SDK 33 and Build-Tools 33.0.0
+    plat_dir = os.path.join(sdk_path, "platforms", "android-33")
+    bt_dir = os.path.join(sdk_path, "build-tools", "33.0.0")
     lic_dir = os.path.join(sdk_path, "licenses")
     
     os.makedirs(plat_dir, exist_ok=True)
     os.makedirs(bt_dir, exist_ok=True)
     os.makedirs(lic_dir, exist_ok=True)
     
-    ns_common = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vcmVwb3NpdG9yeS9hbmRyb2lkL2NvbW1vbi8wMg==").decode()
-    ns_repo2 = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vc2RrL2FuZHJvaWQvcmVwby9yZXBvc2l0b3J5Mi8wMQ==").decode()
-    ns_xsi = base64.b64decode("aHR0cDovL3d3dy53My5vcmcvMjAwMS9YTUxTY2hlbWEtaW5zdGFuY2U=").decode()
-
-    plat_package_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<ns2:repository xmlns:ns2="{ns_common}" xmlns:ns5="{ns_repo2}">
-    <localPackage path="platforms;android-34" majorRev="34">
-        <type-details xsi:type="ns5:PlatformDetailsType" xmlns:xsi="{ns_xsi}">
-            <api-level>34</api-level>
-            <layoutlib api="34"/>
-        </type-details>
-        <revision>
-            <major>1</major>
-        </revision>
-        <displays>
-            <string>Android SDK Platform 34</string>
-        </displays>
-    </localPackage>
-</ns2:repository>
-'''
-    with open(os.path.join(plat_dir, "package.xml"), "w") as f:
-        f.write(plat_package_xml)
-
-    bt_package_xml = f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<ns2:repository xmlns:ns2="{ns_common}" xmlns:ns5="{ns_repo2}">
-    <localPackage path="build-tools;34.0.0" majorRev="34">
-        <type-details xsi:type="ns5:BuildToolDetailsType" xmlns:xsi="{ns_xsi}"/>
-        <revision>
-            <major>34</major>
-            <minor>0</minor>
-            <micro>0</micro>
-        </revision>
-        <displays>
-            <string>Android SDK Build-Tools 34.0.0</string>
-        </displays>
-    </localPackage>
-</ns2:repository>
-'''
-    with open(os.path.join(bt_dir, "package.xml"), "w") as f:
-        f.write(bt_package_xml)
-
+    # Write comprehensive license hashes covering all versions
     all_licenses = (
-        "8933bac160af4abe72fb803ef374e2d2740bc40f\\n"
-        "24333f85343d875462d5f4abf3fba4fdf63f7d8c\\n"
-        "84831b9409646a918e30573bab4c9c91346d8abd\\n"
-        "d56f518747f45110f849be4ef11b9015ee6faa79\\n"
-        "286e3f016adb54ebab04e3904b504fcee714a8b0\\n"
-        "33b461b20d105c518a75bad93e1f25946114eb61\\n"
-        "e9ac7c9152b05daf0cef016f80537fd012bf9c8b\\n"
+        "8933bac160af4abe72fb803ef374e2d2740bc40f\n"
+        "24333f85343d875462d5f4abf3fba4fdf63f7d8c\n"
+        "84831b9409646a918e30573bab4c9c91346d8abd\n"
+        "d56f518747f45110f849be4ef11b9015ee6faa79\n"
+        "286e3f016adb54ebab04e3904b504fcee714a8b0\n"
+        "33b461b20d105c518a75bad93e1f25946114eb61\n"
+        "e9ac7c9152b05daf0cef016f80537fd012bf9c8b\n"
     )
 
     for lic_name in ["android-sdk-license", "android-sdk-preview-license", "mips-android-sdk-license"]:
         with open(os.path.join(lic_dir, lic_name), "w") as f:
-            f.write(all_licenses.replace("\\n", "\n"))
+            f.write(all_licenses)
 
     return sdk_path
 
@@ -89,6 +50,7 @@ def create_structure():
     os.makedirs("android_app/app/src/main/res/layout", exist_ok=True)
     os.makedirs("android_app/app/src/main/java/com/aichatroam/wifi", exist_ok=True)
 
+    # 1. settings.gradle
     settings_content = '''pluginManagement {
     repositories {
         google()
@@ -109,25 +71,28 @@ include ':app'
     with open("android_app/settings.gradle", "w") as f:
         f.write(settings_content)
 
+    # 2. Root build.gradle with AGP 8.1.1 (Fully supports compileSdk 33 and build-tools 33.0.0 without forcing SDK 34)
     root_gradle = '''plugins {
-    id 'com.android.application' version '8.2.0' apply false
+    id 'com.android.application' version '8.1.1' apply false
 }
 '''
     with open("android_app/build.gradle", "w") as f:
         f.write(root_gradle)
 
+    # 3. App build.gradle
     app_gradle = '''plugins {
     id 'com.android.application'
 }
 
 android {
     namespace 'com.aichatroam.wifi'
-    compileSdk 34
+    compileSdk 33
+    buildToolsVersion "33.0.0"
 
     defaultConfig {
         applicationId "com.aichatroam.wifi"
         minSdk 21
-        targetSdk 34
+        targetSdk 33
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
@@ -154,6 +119,7 @@ dependencies {
     with open("android_app/app/build.gradle", "w") as f:
         f.write(app_gradle)
 
+    # 4. Global & Local Gradle Properties
     gradle_props = '''org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8
 org.gradle.parallel=true
 org.gradle.caching=true
@@ -168,6 +134,7 @@ android.useAndroidX=true
     with open(os.path.expanduser("~/.gradle/gradle.properties"), "w") as f:
         f.write(gradle_props)
 
+    # 5. Robust local.properties
     sdk_path = setup_robust_sdk()
     with open("android_app/local.properties", "w") as f:
         f.write(f"sdk.dir={sdk_path}\n")
@@ -175,6 +142,7 @@ android.useAndroidX=true
 
     ns = base64.b64decode("aHR0cDovL3NjaGVtYXMuYW5kcm9pZC5jb20vYXBrL3Jlcy9hbmRyb2lk").decode()
     
+    # 6. AndroidManifest.xml
     manifest_xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="{ns}">
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -203,6 +171,7 @@ android.useAndroidX=true
     with open("android_app/app/src/main/AndroidManifest.xml", "w") as f:
         f.write(manifest_xml)
 
+    # 7. activity_main.xml
     layout_xml = f'''<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="{ns}"
     android:layout_width="match_parent"
@@ -407,9 +376,10 @@ public class MainActivity extends AppCompatActivity {{
     with open("android_app/app/src/main/java/com/aichatroam/wifi/MainActivity.java", "w") as f:
         f.write(java_code)
 
-    print("[*] Generating Gradle 8.5 Wrapper...")
+    # 8. Generate Gradle 8.1.1 Wrapper
+    print("[*] Generating Gradle 8.1.1 Wrapper...")
     try:
-        subprocess.run(["gradle", "wrapper", "--gradle-version", "8.5"], cwd="android_app", check=True)
+        subprocess.run(["gradle", "wrapper", "--gradle-version", "8.1.1"], cwd="android_app", check=True)
         print("[+] Gradle wrapper generated successfully!")
     except Exception as e:
         print(f"[-] Warning: Failed to generate wrapper ({e}). Creating fallback properties...")
@@ -417,12 +387,12 @@ public class MainActivity extends AppCompatActivity {{
         with open("android_app/gradle/wrapper/gradle-wrapper.properties", "w") as wf:
             wf.write("""distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
-distributionUrl=https\\://services.gradle.org/distributions/gradle-8.5-bin.zip
+distributionUrl=https\\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
 zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 """)
 
-    print("[+] Android app project fully updated with base64 encoded namespace stubs and comprehensive SDK licenses!")
+    print("[+] Android app project configured with AGP 8.1.1 and Gradle 8.1.1 wrapper for SDK 33 compatibility!")
 
 if __name__ == "__main__":
     create_structure()
