@@ -4,6 +4,7 @@ import base64
 import urllib.request
 import zipfile
 import shutil
+import stat
 
 def setup_robust_sdk():
     possible_paths = [
@@ -77,6 +78,14 @@ def ensure_gradle_8_1_1(app_dir):
             print("[+] Gradle 8.1.1 installed successfully!")
         except Exception as e:
             print(f"[-] Error downloading Gradle 8.1.1: {e}")
+    
+    # Recursively make all files in bin executable (fixes Permission denied)
+    bin_dir = os.path.join(gradle_home, "bin")
+    if os.path.exists(bin_dir):
+        for f in os.listdir(bin_dir):
+            fp = os.path.join(bin_dir, f)
+            os.chmod(fp, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+
     return gradle_bin
 
 def create_structure():
